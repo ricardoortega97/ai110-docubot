@@ -109,7 +109,7 @@ Rules:
 - When you do answer, briefly mention which files you relied on.
 """
 
-        response = response = self.client.models.generate_content(
+        response = self.client.models.generate_content(
             model=GEMINI_MODEL_NAME,
             contents=prompt)
         return (response.text or "").strip()
