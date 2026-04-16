@@ -5,7 +5,7 @@ __pycache__/
 *.pyd
 
 # Virtual environments
-venv/
+.venv
 .env/
 .env.bak/
 
@@ -25,3 +25,5 @@ venv/
 
 # Logs
 *.log
+
+claude.md

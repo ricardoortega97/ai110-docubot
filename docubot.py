@@ -50,21 +50,32 @@ class DocuBot:
 
     def build_index(self, documents):
         """
-        TODO (Phase 1):
-        Build a tiny inverted index mapping lowercase words to the documents
-        they appear in.
+        Builds an inverted index mapping lowercase tokens to the filenames
+        that contain them.
 
-        Example structure:
+        Structure:
         {
             "token": ["AUTH.md", "API_REFERENCE.md"],
             "database": ["DATABASE.md"]
         }
 
-        Keep this simple: split on whitespace, lowercase tokens,
-        ignore punctuation if needed.
+        Each filename appears at most once per token (deduped via seen set).
+        Basic punctuation is stripped so "auth," and "auth" map to the same key.
         """
         index = {}
-        # TODO: implement simple indexing
+        punct = str.maketrans("", "", ".,!?;:\"'()[]{}")
+
+        for filename, text in documents:
+            seen = set()
+            for word in text.lower().split():
+                token = word.translate(punct)
+                if not token or token in seen:
+                    continue
+                seen.add(token)
+                if token not in index:
+                    index[token] = []
+                index[token].append(filename)
+
         return index
 
     # -----------------------------------------------------------
@@ -73,27 +84,48 @@ class DocuBot:
 
     def score_document(self, query, text):
         """
-        TODO (Phase 1):
-        Return a simple relevance score for how well the text matches the query.
+        Returns a numeric relevance score: the total number of times
+        any query word appears in the document text (term frequency sum).
 
-        Suggested baseline:
-        - Convert query into lowercase words
-        - Count how many appear in the text
-        - Return the count as the score
+        - Lowercases both query and text before comparing
+        - Strips basic punctuation from text tokens
+        - Different queries produce different scores because counts vary per doc
         """
-        # TODO: implement scoring
-        return 0
+        punct = str.maketrans("", "", ".,!?;:\"'()[]{}")
+        query_tokens = [w.translate(punct) for w in query.lower().split()]
+        text_tokens = [w.translate(punct) for w in text.lower().split()]
+
+        score = 0
+        for token in query_tokens:
+            if token:
+                score += text_tokens.count(token)
+        return score
 
     def retrieve(self, query, top_k=3):
         """
-        TODO (Phase 1):
-        Use the index and scoring function to select top_k relevant document snippets.
-
-        Return a list of (filename, text) sorted by score descending.
+        Uses the index to find candidate documents that contain at least one
+        query word, scores each candidate, and returns the top_k results
+        sorted by score descending as a list of (filename, text).
         """
-        results = []
-        # TODO: implement retrieval logic
-        return results[:top_k]
+        punct = str.maketrans("", "", ".,!?;:\"'()[]{}")
+        query_tokens = [w.translate(punct) for w in query.lower().split() if w]
+
+        # Use the index to narrow candidates (avoid scoring every document)
+        candidate_filenames = set()
+        for token in query_tokens:
+            for filename in self.index.get(token, []):
+                candidate_filenames.add(filename)
+
+        scored = []
+        for filename, text in self.documents:
+            if filename not in candidate_filenames:
+                continue
+            score = self.score_document(query, text)
+            if score > 0:
+                scored.append((score, filename, text))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [(filename, text) for _, filename, text in scored[:top_k]]
 
     # -----------------------------------------------------------
     # Answering Modes
